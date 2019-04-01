@@ -20,8 +20,8 @@ pragma solidity >=0.5.0;
 contract Vat {
     // --- Auth ---
     mapping (address => uint) public wards;
-    function rely(address usr) public note auth { wards[usr] = 1; }
-    function deny(address usr) public note auth { wards[usr] = 0; }
+    function rely(address usr) public note(1) auth { wards[usr] = 1; }
+    function deny(address usr) public note(1) auth { wards[usr] = 0; }
     modifier auth { require(wards[msg.sender] == 1); _; }
 
     mapping(address => mapping (address => uint)) public can;
@@ -63,16 +63,21 @@ contract Vat {
         bytes32  indexed  arg3,
         bytes             data
     ) anonymous;
-    modifier note {
+    modifier note(uint256 n) {
         bytes32 arg1;
         bytes32 arg2;
         bytes32 arg3;
+        bytes memory data;
         assembly {
             arg1 := calldataload(4)
             arg2 := calldataload(36)
             arg3 := calldataload(68)
+            data := mload(0x40)
+            // let size := add(4, mul(32, n))
+            mstore(data, add(4, mul(32, n)))
+            calldatacopy(add(data, 0x20), 0, add(4, mul(32, n)))
         }
-        emit Note(msg.sig, arg1, arg2, arg3, msg.data); _;
+        emit Note(msg.sig, arg1, arg2, arg3, data); _;
     }
 
     // --- Init ---
@@ -108,36 +113,36 @@ contract Vat {
     }
 
     // --- Administration ---
-    function init(bytes32 ilk) public note auth {
+    function init(bytes32 ilk) public note(1) auth {
         require(ilks[ilk].rate == 0);
         ilks[ilk].rate = 10 ** 27;
     }
-    function file(bytes32 what, uint data) public note auth {
+    function file(bytes32 what, uint data) public note(2) auth {
         if (what == "Line") Line = data;
     }
-    function file(bytes32 ilk, bytes32 what, uint data) public note auth {
+    function file(bytes32 ilk, bytes32 what, uint data) public note(3) auth {
         if (what == "spot") ilks[ilk].spot = data;
         if (what == "line") ilks[ilk].line = data;
         if (what == "dust") ilks[ilk].dust = data;
     }
 
     // --- Fungibility ---
-    function slip(bytes32 ilk, address usr, int256 wad) public note auth {
+    function slip(bytes32 ilk, address usr, int256 wad) public note(3) auth {
         gem[ilk][usr] = add(gem[ilk][usr], wad);
     }
-    function flux(bytes32 ilk, address src, address dst, uint256 wad) public note {
+    function flux(bytes32 ilk, address src, address dst, uint256 wad) public note(4) {
         require(wish(src, msg.sender));
         gem[ilk][src] = sub(gem[ilk][src], wad);
         gem[ilk][dst] = add(gem[ilk][dst], wad);
     }
-    function move(address src, address dst, uint256 rad) public note {
+    function move(address src, address dst, uint256 rad) public note(3) {
         require(wish(src, msg.sender));
         dai[src] = sub(dai[src], rad);
         dai[dst] = add(dai[dst], rad);
     }
 
     // --- CDP Manipulation ---
-    function frob(bytes32 i, address u, address v, address w, int dink, int dart) public note {
+    function frob(bytes32 i, address u, address v, address w, int dink, int dart) public note(6) {
         Urn storage urn = urns[i][u];
         Ilk storage ilk = ilks[i];
 
@@ -166,7 +171,7 @@ contract Vat {
         require(live == 1);
     }
     // --- CDP Fungibility ---
-    function fork(bytes32 ilk, address src, address dst, int dink, int dart) public note {
+    function fork(bytes32 ilk, address src, address dst, int dink, int dart) public note(5) {
         Urn storage u = urns[ilk][src];
         Urn storage v = urns[ilk][dst];
         Ilk storage i = ilks[ilk];
@@ -188,7 +193,7 @@ contract Vat {
         require(mul(v.art, i.rate) >= i.dust || v.art == 0);
     }
     // --- CDP Confiscation ---
-    function grab(bytes32 i, address u, address v, address w, int dink, int dart) public note auth {
+    function grab(bytes32 i, address u, address v, address w, int dink, int dart) public note(6) auth {
         Urn storage urn = urns[i][u];
         Ilk storage ilk = ilks[i];
 
@@ -202,7 +207,7 @@ contract Vat {
     }
 
     // --- Settlement ---
-    function heal(address u, address v, int rad) public note auth {
+    function heal(address u, address v, int rad) public note(3) auth {
         sin[u] = sub(sin[u], rad);
         dai[v] = sub(dai[v], rad);
         vice   = sub(vice,   rad);
@@ -210,7 +215,7 @@ contract Vat {
     }
 
     // --- Rates ---
-    function fold(bytes32 i, address u, int rate) public note auth {
+    function fold(bytes32 i, address u, int rate) public note(3) auth {
         Ilk storage ilk = ilks[i];
         ilk.rate = add(ilk.rate, rate);
         int rad  = mul(ilk.Art, rate);
