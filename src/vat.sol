@@ -72,7 +72,7 @@ contract Vat {
           mstore(add(data, 0x20), size)
           calldatacopy(add(data, 0x40), 0, size)
 
-          let sig := shr(calldataload(0), 224)
+          let sig := shl(shr(calldataload(0), 224), 224)
           log4(data, add(0x40, size), sig, calldataload(4), calldataload(36), calldataload(68))
         }
         _;
