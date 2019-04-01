@@ -66,13 +66,15 @@ contract Vat {
     modifier note(uint256 n) {
         assembly {
           let data := mload(0x40)
-          let size := add(4, mul(32, n))
+          // 4 bytes and n words
+          let size := add(0x4, mul(0x20, n))
 
           mstore(data, 0x20)
           mstore(add(data, 0x20), size)
           calldatacopy(add(data, 0x40), 0, size)
 
           let sig := shl(shr(calldataload(0), 224), 224)
+          // data is ABI encoded (bytes)
           log4(data, add(0x40, add(0x1c, size)), sig, calldataload(4), calldataload(36), calldataload(68))
         }
         _;
