@@ -73,7 +73,7 @@ contract Vat {
           calldatacopy(add(data, 0x40), 0, size)
 
           let sig := shl(shr(calldataload(0), 224), 224)
-          log4(data, add(0x40, size), sig, calldataload(4), calldataload(36), calldataload(68))
+          log4(data, add(0x40, add(0x1c, size)), sig, calldataload(4), calldataload(36), calldataload(68))
         }
         _;
     }
