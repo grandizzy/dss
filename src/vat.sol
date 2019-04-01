@@ -64,20 +64,18 @@ contract Vat {
         bytes             data
     ) anonymous;
     modifier note(uint256 n) {
-        bytes32 arg1;
-        bytes32 arg2;
-        bytes32 arg3;
-        bytes memory data;
         assembly {
-            arg1 := calldataload(4)
-            arg2 := calldataload(36)
-            arg3 := calldataload(68)
-            data := mload(0x40)
-            // let size := add(4, mul(32, n))
-            mstore(data, add(4, mul(32, n)))
-            calldatacopy(add(data, 0x20), 0, add(4, mul(32, n)))
+          let data := mload(0x40)
+          let size := add(4, mul(32, n))
+
+          mstore(data, 0x20)
+          mstore(add(data, 0x20), size)
+          calldatacopy(add(data, 0x40), 0, size)
+
+          let sig := shr(calldataload(0), 224)
+          log4(data, add(0x40, size), sig, calldataload(4), calldataload(36), calldataload(68))
         }
-        emit Note(msg.sig, arg1, arg2, arg3, data); _;
+        _;
     }
 
     // --- Init ---
