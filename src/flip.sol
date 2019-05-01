@@ -165,6 +165,7 @@ contract Flipper is DSNote {
         delete bids[id];
     }
     function yank(uint id) public note auth {
+        require(live == 0);
         require(bids[id].guy != address(0));
         require(bids[id].bid < bids[id].tab);
         vat.move(address(this), bids[id].guy, bids[id].bid);
