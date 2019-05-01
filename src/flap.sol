@@ -38,6 +38,12 @@ contract GemLike {
 */
 
 contract Flapper is DSNote {
+    // --- Auth ---
+    mapping (address => uint) public wards;
+    function rely(address guy) public note auth { wards[guy] = 1; }
+    function deny(address guy) public note auth { wards[guy] = 0; }
+    modifier auth { require(wards[msg.sender] == 1); _; }
+
     // --- Data ---
     struct Bid {
         uint256 bid;
@@ -71,6 +77,7 @@ contract Flapper is DSNote {
     constructor(address dai_, address gem_) public {
         dai = DaiLike(dai_);
         gem = GemLike(gem_);
+        wards[msg.sender] = 1;
     }
 
     // --- Math ---
@@ -108,7 +115,7 @@ contract Flapper is DSNote {
         require(mul(bid, ONE) >= mul(beg, bids[id].bid));
 
         gem.move(msg.sender, bids[id].guy, bids[id].bid);
-        gem.move(msg.sender, bids[id].gal, bid - bids[id].bid);
+        gem.move(msg.sender, address(this), bid - bids[id].bid);
 
         bids[id].guy = msg.sender;
         bids[id].bid = bid;
@@ -118,6 +125,13 @@ contract Flapper is DSNote {
         require(bids[id].tic < now && bids[id].tic != 0 ||
                 bids[id].end < now);
         dai.move(address(this), bids[id].guy, bids[id].lot);
+        gem.move(address(this), bids[id].gal, bids[id].bid);
+        delete bids[id];
+    }
+    function yank(uint id) public note auth {
+        require(bids[id].guy != address(0));
+        gem.move(address(this), bids[id].guy, bids[id].bid);
+        dai.move(address(this), msg.sender, bids[id].lot);
         delete bids[id];
     }
 }
