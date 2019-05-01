@@ -33,6 +33,7 @@ contract VatLike {
     function dai (address) public view returns (uint);
     function sin (address) public view returns (uint);
     function heal(address,address,int) public;
+    function move(address,address,uint) public;
 }
 
 contract Vow is DSNote {
@@ -57,8 +58,13 @@ contract Vow is DSNote {
     uint256 public bump;  // flap fixed lot size  [rad]
     uint256 public hump;  // surplus buffer       [rad]
 
+    uint256 public live;
+
     // --- Init ---
-    constructor() public { wards[msg.sender] = 1; }
+    constructor() public {
+        wards[msg.sender] = 1;
+        live = 1;
+    }
 
     // --- Math ---
     function add(uint x, uint y) internal pure returns (uint z) {
@@ -69,6 +75,15 @@ contract Vow is DSNote {
     }
     function mul(uint x, uint y) internal pure returns (uint z) {
         require(y == 0 || (z = x * y) / y == x);
+    }
+    uint constant ONE = 10 ** 27;
+    function rmul(uint x, uint y) internal pure returns (uint z) {
+        z = x * y;
+        require(y == 0 || z / y == x);
+        z = z / ONE;
+    }
+    function min(uint x, uint y) internal pure returns (uint z) {
+        if (x > y) { z = y; } else { z = x; }
     }
 
     // --- Administration ---
@@ -82,6 +97,13 @@ contract Vow is DSNote {
         if (what == "flap") cow = addr;
         if (what == "flop") row = addr;
         if (what == "vat")  vat = addr;
+    }
+    function cage(uint256 dump) public note auth {
+        live = 0;
+        uint rad = min(Joy(), Woe());
+        require(int(rad) >= 0);
+        VatLike(vat).heal(address(this), address(this), int(rad));
+        VatLike(vat).move(address(this), msg.sender, min(Joy(), rmul(hump, dump)));
     }
 
     // Total deficit
